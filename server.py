@@ -54,13 +54,29 @@ GOOGLE_SCOPES = [
     "https://www.googleapis.com/auth/calendar.readonly",
 ]
 
-# Transfer contacts — add names and numbers for people you want to transfer calls to
-# Example: TRANSFER_CONTACTS = {"john": "+11234567890", "sarah": "+10987654321"}
+# Transfer contacts — loaded from env var or hardcoded below.
+# Env var format: TRANSFER_CONTACTS="john:+11234567890,sarah:+10987654321"
+# Or edit the dict directly:
 TRANSFER_CONTACTS = {}
+_transfer_env = os.environ.get("TRANSFER_CONTACTS", "")
+if _transfer_env:
+    for entry in _transfer_env.split(","):
+        entry = entry.strip()
+        if ":" in entry:
+            name, number = entry.split(":", 1)
+            TRANSFER_CONTACTS[name.strip().lower()] = number.strip()
 
 # STT often mishears names — map common misheard variants to the canonical name
-# Example: TRANSFER_ALIASES = {"jon": "john", "sharah": "sarah"}
+# Env var format: TRANSFER_ALIASES="jon:john,sharah:sarah"
+# Or edit the dict directly:
 TRANSFER_ALIASES = {}
+_aliases_env = os.environ.get("TRANSFER_ALIASES", "")
+if _aliases_env:
+    for entry in _aliases_env.split(","):
+        entry = entry.strip()
+        if ":" in entry:
+            alias, canonical = entry.split(":", 1)
+            TRANSFER_ALIASES[alias.strip().lower()] = canonical.strip().lower()
 
 def _system_prompt():
     now = datetime.now()

@@ -193,24 +193,19 @@ Personal-AI-Phone-Assistant/
 
 ### Transfer Contacts
 
-Edit `TRANSFER_CONTACTS` in `server.py` to add people you can transfer calls to:
+Set the `TRANSFER_CONTACTS` env var (or edit the dict in `server.py`):
 
-```python
-TRANSFER_CONTACTS = {
-    "john": "+11234567890",
-    "sarah": "+10987654321",
-}
+```bash
+# In your .env or Railway/Render dashboard:
+TRANSFER_CONTACTS=john:+11234567890,sarah:+10987654321
 ```
 
 You'll also need to set `transferNumber` on your agent via the AgentPhone API or dashboard.
 
-Since speech-to-text can mishear names, add aliases in `TRANSFER_ALIASES`:
+Since speech-to-text can mishear names, add aliases:
 
-```python
-TRANSFER_ALIASES = {
-    "jon": "john",
-    "sharah": "sarah",
-}
+```bash
+TRANSFER_ALIASES=jon:john,sharah:sarah
 ```
 
 ### Other Ideas
