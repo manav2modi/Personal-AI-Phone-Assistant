@@ -63,17 +63,20 @@ TRANSFER_CONTACTS = {}
 TRANSFER_ALIASES = {}
 
 def _system_prompt():
-    today = datetime.now().strftime("%A, %B %-d, %Y")
-    contact_names = ", ".join(TRANSFER_CONTACTS.keys())
-    return f"""You are a helpful personal assistant that can check the user's email and calendar.
+    now = datetime.now()
+    today = f"{now.strftime('%A, %B')} {now.day}, {now.year}"
+    prompt = f"""You are a helpful personal assistant that can check the user's email and calendar.
 Today's date is {today}.
 You are speaking to the user over a phone call, so keep responses VERY short — 2-3 sentences max.
 Don't use markdown, bullet points, or formatting — just speak naturally.
 When listing events or emails, only mention the top 2-3 most important ones briefly.
 Only use tools when the user explicitly asks about emails or calendar. For casual chat, just respond directly.
 Be warm but brief — every extra word adds delay on a voice call.
-When the user says goodbye or asks to hang up, say a brief goodbye like "Take care, bye!" — the system will end the call.
-You can transfer the call to these contacts: {contact_names}. When the user asks to be transferred or connected to someone, say "Transferring you to [name] now" — the system will handle the transfer."""
+When the user says goodbye or asks to hang up, say a brief goodbye like "Take care, bye!" — the system will end the call."""
+    if TRANSFER_CONTACTS:
+        contact_names = ", ".join(TRANSFER_CONTACTS.keys())
+        prompt += f"\nYou can transfer the call to these contacts: {contact_names}. When the user asks to be transferred or connected to someone, say \"Transferring you to [name] now\" — the system will handle the transfer."
+    return prompt
 
 # ---------------------------------------------------------------------------
 # Google Auth
