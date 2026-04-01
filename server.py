@@ -54,29 +54,9 @@ GOOGLE_SCOPES = [
     "https://www.googleapis.com/auth/calendar.readonly",
 ]
 
-# Transfer contacts — loaded from env var or hardcoded below.
-# Env var format: TRANSFER_CONTACTS="john:+11234567890,sarah:+10987654321"
-# Or edit the dict directly:
-TRANSFER_CONTACTS = {}
-_transfer_env = os.environ.get("TRANSFER_CONTACTS", "")
-if _transfer_env:
-    for entry in _transfer_env.split(","):
-        entry = entry.strip()
-        if ":" in entry:
-            name, number = entry.split(":", 1)
-            TRANSFER_CONTACTS[name.strip().lower()] = number.strip()
-
-# STT often mishears names — map common misheard variants to the canonical name
-# Env var format: TRANSFER_ALIASES="jon:john,sharah:sarah"
-# Or edit the dict directly:
-TRANSFER_ALIASES = {}
-_aliases_env = os.environ.get("TRANSFER_ALIASES", "")
-if _aliases_env:
-    for entry in _aliases_env.split(","):
-        entry = entry.strip()
-        if ":" in entry:
-            alias, canonical = entry.split(":", 1)
-            TRANSFER_ALIASES[alias.strip().lower()] = canonical.strip().lower()
+# Transfer number — any transfer request routes to this single number.
+# Env var format: TRANSFER_NUMBER="+11234567890"
+TRANSFER_NUMBER = os.environ.get("TRANSFER_NUMBER", "")
 
 def _system_prompt():
     now = datetime.now()
@@ -89,9 +69,8 @@ When listing events or emails, only mention the top 2-3 most important ones brie
 Only use tools when the user explicitly asks about emails or calendar. For casual chat, just respond directly.
 Be warm but brief — every extra word adds delay on a voice call.
 When the user says goodbye or asks to hang up, say a brief goodbye like "Take care, bye!" — the system will end the call."""
-    if TRANSFER_CONTACTS:
-        contact_names = ", ".join(TRANSFER_CONTACTS.keys())
-        prompt += f"\nYou can transfer the call to these contacts: {contact_names}. When the user asks to be transferred or connected to someone, say \"Transferring you to [name] now\" — the system will handle the transfer."
+    if TRANSFER_NUMBER:
+        prompt += "\nYou can transfer the call to the user's owner. When the user asks to be transferred, connected to someone, or to talk to a real person, say \"Transferring you now\" — the system will handle the transfer."
     return prompt
 
 # ---------------------------------------------------------------------------
@@ -715,25 +694,12 @@ def handle_webhook():
 
     # Detect if user wants to transfer the call
     transfer_to = None
-    transfer_name = None
     msg_lower = user_message.lower()
-    transfer_phrases = ["transfer", "connect me", "put me through", "patch me through", "forward"]
-    if any(phrase in msg_lower for phrase in transfer_phrases):
-        # Check canonical names
-        for name, number in TRANSFER_CONTACTS.items():
-            if name.lower() in msg_lower:
-                transfer_to = number
-                transfer_name = name
-                break
-        # Check STT aliases (mano → manav, etc.)
-        if not transfer_to:
-            for alias, canonical in TRANSFER_ALIASES.items():
-                if alias in msg_lower:
-                    transfer_to = TRANSFER_CONTACTS[canonical]
-                    transfer_name = canonical
-                    break
-        if transfer_to:
-            logger.info(f"[{call_id[-8:]}] Transfer requested to {transfer_name} ({transfer_to})")
+    transfer_phrases = ["transfer", "connect me", "put me through", "patch me through", "forward",
+                        "talk to a real person", "talk to someone", "talk to a human"]
+    if TRANSFER_NUMBER and any(phrase in msg_lower for phrase in transfer_phrases):
+        transfer_to = TRANSFER_NUMBER
+        logger.info(f"[{call_id[-8:]}] Transfer requested → {transfer_to}")
 
     use_tools = _looks_like_tool_request(user_message)
     logger.info(f"[{call_id[-8:]}] tools_hint={use_tools} for \"{user_message[:40]}\"")
@@ -745,9 +711,9 @@ def handle_webhook():
     if channel == "voice":
         # Transfer: skip Claude, respond immediately with transfer signal
         if transfer_to:
-            logger.info(f"[{call_id[-8:]}] Sending transfer response to {transfer_name}")
+            logger.info(f"[{call_id[-8:]}] Sending transfer response → {transfer_to}")
             return jsonify({
-                "text": f"Transferring you to {transfer_name} now.",
+                "text": "Transferring you now.",
                 "transfer": True,
             })
 
