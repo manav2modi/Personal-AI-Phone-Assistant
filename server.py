@@ -649,8 +649,28 @@ def handle_webhook():
     else:
         user_message = data.get("message", "")
 
+    logger.debug(f"Raw transcript value ({type(user_message).__name__}): {user_message!r}")
+
     # Guard: AgentPhone sometimes sends a list (conversation history) instead of a string
-    if not isinstance(user_message, str):
+    if isinstance(user_message, list):
+        # Extract the last user message from the conversation history list
+        last_user_msg = ""
+        for entry in reversed(user_message):
+            if isinstance(entry, dict):
+                role = entry.get("role", "")
+                if role in ("user", "human"):
+                    last_user_msg = entry.get("content", "") or entry.get("text", "") or entry.get("transcript", "")
+                    break
+            elif isinstance(entry, str):
+                last_user_msg = entry
+                break
+        if last_user_msg and isinstance(last_user_msg, str):
+            logger.info(f"Extracted user message from list transcript: {last_user_msg!r}")
+            user_message = last_user_msg
+        else:
+            logger.warning(f"Could not extract user message from list transcript: {user_message}")
+            return jsonify({"text": "I didn't catch that. Could you say that again?"}), 200
+    elif not isinstance(user_message, str):
         logger.warning(f"Unexpected transcript type: {type(user_message)}, skipping")
         return jsonify({"text": "I didn't catch that. Could you say that again?"}), 200
 
